@@ -1,9 +1,12 @@
-import axios from 'axios';
+import {request} from 'https';
+import {URL} from 'url';
+
 interface MsegatConfig {
   MSEGAT_USERNAME: string;
   MSEGAT_USER_SENDER: string;
   MSEGAT_API_KEY: string;
 }
+
 interface SendVarsPayload {
   userName: string;
   apiKey: string;
@@ -34,14 +37,10 @@ interface CalculateCostPayload {
  * @public
  * @version 1.0.0
  */
-class Msegat {
+export class Msegat {
   private readonly config: MsegatConfig;
 
-  constructor(
-    MSEGAT_USERNAME: string,
-    MSEGAT_API_KEY: string,
-    MSEGAT_USER_SENDER?: string,
-  ) {
+  constructor(MSEGAT_USERNAME: string, MSEGAT_API_KEY: string, MSEGAT_USER_SENDER?: string) {
     this.config = {
       MSEGAT_USERNAME: MSEGAT_USERNAME,
       MSEGAT_API_KEY: MSEGAT_API_KEY,
@@ -55,19 +54,13 @@ class Msegat {
     const { MSEGAT_USERNAME, MSEGAT_USER_SENDER, MSEGAT_API_KEY } = this.config;
 
     if (!MSEGAT_USERNAME) {
-      throw new Error(
-        'Please add msegat username in the environment variables.',
-      );
+      throw new Error('Please add msegat username in the environment variables.');
     }
     if (!MSEGAT_USER_SENDER) {
-      throw new Error(
-        'Please add msegat user sender in the environment variables.',
-      );
+      throw new Error('Please add msegat user sender in the environment variables.');
     }
     if (!MSEGAT_API_KEY) {
-      throw new Error(
-        'Please add msegat API key in the environment variables.',
-      );
+      throw new Error('Please add msegat API key in the environment variables.');
     }
   }
 
@@ -82,18 +75,13 @@ class Msegat {
     };
   }
 
-  private createPayloadForPersonalizedSMS(
-    numbers: string[],
-    msg: string,
-    vars: object[],
-    options?: {
-      timeToSend?: string;
-      exactTime?: string;
-      msgEncoding?: string;
-      reqBulkId?: string;
-      reqFilter?: string;
-    },
-  ) {
+  private createPayloadForPersonalizedSMS(numbers: string[], msg: string, vars: object[], options?: {
+    timeToSend?: string;
+    exactTime?: string;
+    msgEncoding?: string;
+    reqBulkId?: string;
+    reqFilter?: string;
+  }) {
     return {
       userName: this.config.MSEGAT_USERNAME,
       apiKey: this.config.MSEGAT_API_KEY,
@@ -106,56 +94,7 @@ class Msegat {
     } as SendVarsPayload;
   }
 
-  /**
-   * Send personalized messages to multiple numbers with variables.
-   * @param numbers
-   * @param msg
-   * @param vars
-   * @param options
-   */
-  public async sendPersonalizedMessages(
-    numbers: string[],
-    msg: string,
-    vars: object[],
-    options?: {
-      timeToSend?: string;
-      exactTime?: string;
-      msgEncoding?: string;
-      reqBulkId?: string;
-      reqFilter?: string;
-    },
-  ): Promise<any> {
-    const payload = this.createPayloadForPersonalizedSMS(
-      numbers,
-      msg,
-      vars,
-      options,
-    );
-
-    try {
-      const response = await axios.post(
-        'https://www.msegat.com/gw/sendVars.php',
-        payload,
-        {
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        },
-      );
-
-      return response.data;
-    } catch (error : any) {
-      throw new Error(`Error sending personalized messages: ${error.message}`);
-    }
-  }
-
-  private createPayloadForCostCalculation(
-    contactType: string,
-    contacts: string,
-    msg: string,
-    by: string,
-    msgEncoding: string,
-  ) {
+  private createPayloadForCostCalculation(contactType: string, contacts: string, msg: string, by: string, msgEncoding: string) {
     return {
       userName: this.config.MSEGAT_USERNAME,
       apiKey: this.config.MSEGAT_API_KEY,
@@ -167,6 +106,66 @@ class Msegat {
     } as CalculateCostPayload;
   }
 
+  private async sendRequest(url: string, payload: any): Promise<any> {
+    return new Promise((resolve, reject) => {
+      const urlObj = new URL(url);
+      const options = {
+        hostname: urlObj.hostname,
+        path: urlObj.pathname,
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      };
+
+      const req = request(options, (res) => {
+        let data = '';
+
+        res.on('data', (chunk) => {
+          data += chunk;
+        });
+
+        res.on('end', () => {
+          resolve(JSON.parse(data));
+        });
+      });
+
+      req.on('error', (e) => {
+        reject(new Error(`Problem with request: ${e.message}`));
+      });
+
+      req.write(JSON.stringify(payload));
+      req.end();
+    });
+  }
+
+  /**
+   * Send personalized messages to multiple numbers with variables.
+   * @param numbers
+   * @param msg
+   * @param vars
+   * @param options
+   */
+  public async sendPersonalizedMessages(
+      numbers: string[],
+      msg: string,
+      vars: object[],
+      options?: {
+        timeToSend?: string;
+        exactTime?: string;
+        msgEncoding?: string;
+        reqBulkId?: string;
+        reqFilter?: string;
+      },
+  ): Promise<any> {
+    const payload = this.createPayloadForPersonalizedSMS(numbers, msg, vars, options);
+    try {
+      return await this.sendRequest('https://www.msegat.com/gw/sendVars.php', payload);
+    } catch (error: any) {
+      throw new Error(`Error sending personalized messages: ${error.message}`);
+    }
+  }
+
   /**
    * Calculate the cost of sending a message.
    * @param contactType
@@ -176,33 +175,16 @@ class Msegat {
    * @param msgEncoding
    */
   public async calculateMessageCost(
-    contactType: string,
-    contacts: string,
-    msg: string,
-    by: string,
-    msgEncoding: string,
+      contactType: string,
+      contacts: string,
+      msg: string,
+      by: string,
+      msgEncoding: string,
   ): Promise<any> {
-    const payload = this.createPayloadForCostCalculation(
-      contactType,
-      contacts,
-      msg,
-      by,
-      msgEncoding,
-    );
-
+    const payload = this.createPayloadForCostCalculation(contactType, contacts, msg, by, msgEncoding);
     try {
-      const response = await axios.post(
-        'https://www.msegat.com/gw/calculateCost.php',
-        payload,
-        {
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        },
-      );
-
-      return response.data;
-    } catch (error : any) {
+      return await this.sendRequest('https://www.msegat.com/gw/calculateCost.php', payload);
+    } catch (error: any) {
       throw new Error(`Error calculating message cost: ${error.message}`);
     }
   }
@@ -214,23 +196,11 @@ class Msegat {
    */
   public async sendMessage(number: string, message: string): Promise<any> {
     const payload = this.createPayload(number, message);
-
     try {
-      const response = await axios.post(
-        'https://www.msegat.com/gw/sendsms.php',
-        payload,
-        {
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        },
-      );
-
-      return response.data;
-    } catch (error : any) {
+      return await this.sendRequest('https://www.msegat.com/gw/sendsms.php', payload);
+    } catch (error: any) {
       throw new Error(`Error sending message: ${error.message}`);
     }
   }
 }
 
-export default Msegat;
