@@ -1,6 +1,13 @@
 
+
 [![Msegat](https://www.msegat.com/public/assets/img/logo/msegat.png)](https://www.msegat.com/)
+[![TarmeezTech](https://www.tarmeeztech.com/front/images/logo/logo.svg)]()
+
+
+## Sponsored & Supported by [TarmeezTech](https://www.tarmeeztech.com/)
+
 # Msegat
+[![npm](https://img.shields.io/npm/dm/msegat)](https://www.npmjs.com/package/msegat)
 [![npm](https://img.shields.io/npm/v/msegat)](https://www.npmjs.com/package/msegat)
 [![npm](https://img.shields.io/npm/dt/msegat)](https://www.npmjs.com/package/msegat)
 [![GitHub](https://img.shields.io/github/license/abranhe/msegat)]()

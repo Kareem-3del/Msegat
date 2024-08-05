@@ -1,5 +1,5 @@
-import {request} from 'https';
-import {URL} from 'url';
+import { request } from 'https';
+import { URL } from 'url';
 
 interface MsegatConfig {
   MSEGAT_USERNAME: string;
@@ -202,5 +202,61 @@ export class Msegat {
       throw new Error(`Error sending message: ${error.message}`);
     }
   }
-}
 
+  /**
+   * Send an OTP code to a single number.
+   * @param number
+   * @param lang
+   * @returns Promise<{ code: number; id: number; message: string; }>
+   *     The response object contains the code, id, and message.
+   *     The code is the status code, the id is the OTP code ID, and the message is the response message.
+   *     The code is 0 if the request was successful.
+   */
+  public async sendOTPCode(number: string, lang: 'Ar' | 'En'): Promise<{
+    code: number;
+    id: number;
+    message: string;
+  }> {
+    const payload = {
+      lang,
+      userName: this.config.MSEGAT_USERNAME,
+      number,
+      apiKey: this.config.MSEGAT_API_KEY,
+      userSender: this.config.MSEGAT_USER_SENDER,
+    };
+    try {
+      return await this.sendRequest('https://www.msegat.com/gw/sendOTPCode.php', payload);
+    } catch (error: any) {
+      throw new Error(`Error sending OTP code: ${error.message}`);
+    }
+  }
+
+  /**
+   * Verify the OTP code.
+   * @param code
+   * @param id
+   * @param lang
+   * @returns Promise<{ code: number; message: string; }>
+   *     The response object contains the code and message.
+   *     The code is 0 if the request was successful.
+   *     The message is the response message.
+   */
+  public async verifyOTPCode(code: string, id: number, lang: 'Ar' | 'En'): Promise<{
+    code: number;
+    message: string;
+  }> {
+    const payload = {
+      lang,
+      userName: this.config.MSEGAT_USERNAME,
+      apiKey: this.config.MSEGAT_API_KEY,
+      code,
+      id,
+      userSender: this.config.MSEGAT_USER_SENDER,
+    };
+    try {
+      return await this.sendRequest('https://www.msegat.com/gw/verifyOTPCode.php', payload);
+    } catch (error: any) {
+      throw new Error(`Error verifying OTP code: ${error.message}`);
+    }
+  }
+}
